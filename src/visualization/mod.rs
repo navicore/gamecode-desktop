@@ -99,30 +99,34 @@ pub fn start_tool_visualization(
     // The camera has been moved to look at the center of the top section,
     // so tools at (0,0) should appear in the center of that section
     // Position tools in the top section of the screen
-    // Calculate offset needed to move tools to the visualization area
+    // Get window dimensions (estimates)
+    let window_width = 1280.0; // Default width estimate
     let window_height = 960.0; // Default height estimate
     let vis_height = window_height * 0.25; // Visualization height (25%)
     
-    // To move from the center to the visualization area:
+    // Calculate Y offset to center in the visualization area:
     // 1. Center of window is at y=0
     // 2. Center of visualization area is at y=(window_height*0.5 - vis_height*0.5)
     let y_offset = (window_height * 0.5) - (vis_height * 0.5);
     
+    // Use most of the window width for x-axis randomization
+    let x_range = window_width * 0.8; // Use 80% of width to keep from edges
+    
     let position = if vis_state.last_position == Vec3::ZERO {
-        // First tool - position at the calculated y-offset
-        // This should place it in the center of the visualization area
-        Vec3::new(0.0, y_offset, 0.0)
+        // First tool - position with random X in the top section
+        let random_x = (rand::random::<f32>() - 0.5) * x_range;
+        Vec3::new(random_x, y_offset, 0.0)
     } else {
-        // Subsequent tools in a pattern around the first position
-        let num_tools = vis_state.animation_manager.active_tools.len() as f32;
-        let angle = num_tools * 0.8;
-
-        // Use a small radius for the circular pattern
-        let radius = 50.0;
+        // Subsequent tools - randomize X position fully
+        // This spreads tools across the entire width of the visible area
+        let random_x = (rand::random::<f32>() - 0.5) * x_range;
+        
+        // Small vertical variation around y_offset
+        let y_variation = (rand::random::<f32>() - 0.5) * (vis_height * 0.3);
         
         Vec3::new(
-            radius * angle.cos(),
-            y_offset + (radius * angle.sin()),
+            random_x,
+            y_offset + y_variation,
             0.0,
         )
     };
