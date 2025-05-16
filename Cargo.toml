@@ -16,7 +16,7 @@ egui = "0.31" # Keep in sync with bevy_egui
 egui_extras = "0.31" # Keep in sync with egui
 
 # Agent and LLM requirements
-aws-config = "0.55"
+aws-config = "1.6"
 aws-sdk-bedrockruntime = "1.87"
 tokio = { version = "1.32", features = ["full"] }
 async-trait = "0.1"
