@@ -11,7 +11,7 @@ pub fn init() {
 pub trait BackendCore: Send + Sync {
     /// Get the backend's name
     fn name(&self) -> &'static str;
-    
+
     /// Get the backend's context window size
     fn context_window(&self) -> usize;
 }
@@ -27,10 +27,10 @@ pub trait Backend: BackendCore {
 pub struct BackendResponse {
     /// The text content of the response
     pub content: String,
-    
+
     /// Model used for generation
     pub model: String,
-    
+
     /// Tokens used in this request and response
     pub tokens_used: Option<usize>,
 }

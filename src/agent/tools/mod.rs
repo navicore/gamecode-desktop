@@ -1,9 +1,9 @@
-mod registry;
 mod executor;
+mod registry;
 mod types;
 
-pub use registry::*;
 pub use executor::*;
+pub use registry::*;
 pub use types::*;
 
 /// Initialize the tools system
