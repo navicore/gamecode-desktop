@@ -11,7 +11,7 @@ authors = ["Ed Sweeney <ed@onextent.com>"]
 bevy = "0.15.0" # Upgrading to Bevy 0.15
  
 # UI components - version compatible with Bevy 0.15
-bevy_egui = "0.33.0" # Compatible with Bevy 0.15
+bevy_egui = "0.34.1" # Compatible with Bevy 0.15
 egui = "0.27.0" # Keep in sync with bevy_egui - egui version is managed by bevy_egui
 egui_extras = "0.27.0" # Keep in sync with egui
 
