@@ -8,12 +8,12 @@ impl ToolManager {
     pub fn new() -> Self {
         Self {}
     }
-    
+
     pub fn get_available_tools(&self) -> Vec<Tool> {
         // TODO: Return list of available tools
         vec![]
     }
-    
+
     pub fn execute_tool(&self, tool: &Tool, args: Vec<String>) -> Result<String, String> {
         // TODO: Execute the specified tool
         println!("Executing tool: {} with args: {:?}", tool.name, args);
