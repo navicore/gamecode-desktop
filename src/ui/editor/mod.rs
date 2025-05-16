@@ -1,11 +1,11 @@
+mod code_editor;
 mod input;
 mod journal;
-mod code_editor;
 mod syntax_ext;
 
+pub use code_editor::{InputCodeEditor, SenderType};
 pub use input::InputEditor;
 pub use journal::JournalEditor;
-pub use code_editor::{InputCodeEditor, SenderType};
 
 // Common editor functionality
 pub trait Editor {

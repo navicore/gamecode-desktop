@@ -8,7 +8,7 @@ impl Layout {
     pub fn new() -> Self {
         Self {}
     }
-    
+
     pub fn update(&mut self) {
         // TODO: Update layout properties based on window size/state
     }

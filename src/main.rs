@@ -1,8 +1,8 @@
+mod agent;
 mod app;
+mod core;
 mod ui;
 mod visualization;
-mod core;
-mod agent;
 
 fn main() {
     // Initialize application

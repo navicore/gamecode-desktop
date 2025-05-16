@@ -103,15 +103,15 @@ pub fn start_tool_visualization(
     let window_width = 1280.0; // Default width estimate
     let window_height = 960.0; // Default height estimate
     let vis_height = window_height * 0.25; // Visualization height (25%)
-    
+
     // Calculate Y offset to center in the visualization area:
     // 1. Center of window is at y=0
     // 2. Center of visualization area is at y=(window_height*0.5 - vis_height*0.5)
     let y_offset = (window_height * 0.5) - (vis_height * 0.5);
-    
+
     // Use most of the window width for x-axis randomization
     let x_range = window_width * 0.8; // Use 80% of width to keep from edges
-    
+
     let position = if vis_state.last_position == Vec3::ZERO {
         // First tool - position with random X in the top section
         let random_x = (rand::random::<f32>() - 0.5) * x_range;
@@ -120,15 +120,11 @@ pub fn start_tool_visualization(
         // Subsequent tools - randomize X position fully
         // This spreads tools across the entire width of the visible area
         let random_x = (rand::random::<f32>() - 0.5) * x_range;
-        
+
         // Small vertical variation around y_offset
         let y_variation = (rand::random::<f32>() - 0.5) * (vis_height * 0.3);
-        
-        Vec3::new(
-            random_x,
-            y_offset + y_variation,
-            0.0,
-        )
+
+        Vec3::new(random_x, y_offset + y_variation, 0.0)
     };
 
     // Store the position
