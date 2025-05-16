@@ -506,7 +506,7 @@ fn ui_system(
                     let frame = egui::Frame::NONE
                         .fill(egui::Color32::from_rgb(30, 30, 30)) // Dark background
                         .inner_margin(egui::Margin::same(8))
-                        .corner_radius(egui::Rounding::same(4));
+                        .corner_radius(egui::CornerRadius::same(4));
 
                     // Use the frame to render the text editor
                     let response = frame.show(ui, |ui| ui.add(text_edit)).inner;
