@@ -129,13 +129,8 @@ fn setup_system(mut commands: Commands, windows: Query<&Window>) {
     // This is: (half window height - half visualization height) = 3/8 of window height
     let y_offset = (window_height * 0.5) - (vis_height * 0.5);
     
-    // Go back to a simpler camera setup that we know makes tools visible
+    // Go back to the default camera that works
     let camera = Camera2dBundle::default();
-    
-    // Skip any transform adjustments - keep camera at origin
-    
-    // Set up a very basic viewport for the top 25%
-    // This is the only setting we need to make the camera render in the top section
     
     // Spawn the camera
     commands.spawn(camera);
@@ -282,41 +277,17 @@ fn demo_tool_system(
 }
 
 // System to update the camera viewport to match the visualization area
-// Very basic viewport setup to render in the top 25% of the window
+// Back to the basic approach that makes tools visible
 fn update_camera_viewport(
     windows: Query<&Window>,
     mut cameras: Query<&mut Camera>,
 ) {
-    let window = windows.single();
-    let window_height = window.resolution.height();
-    
-    // Calculate top 25% dimensions
-    let visualization_height = window_height * 0.25;
-    
-    // Update all cameras
+    // Clear any viewport restrictions to ensure tools are visible
     for mut camera in cameras.iter_mut() {
-        // IMPORTANT: In OpenGL/Vulkan coordinates (0,0) is at the BOTTOM-left corner
-        // To render at the TOP of the window, we must calculate Y from the bottom
-        let window_physical_height = window.resolution.height() as u32;
-        let vis_physical_height = visualization_height as u32;
-        
-        // Calculate position for top 25% (starting from the bottom)
-        let viewport_y = window_physical_height - vis_physical_height;
-        
-        // Set up viewport for the top 25%
-        let viewport = bevy::render::camera::Viewport {
-            physical_position: UVec2::new(0, viewport_y), // Position at top 25%
-            physical_size: UVec2::new(
-                window.resolution.width() as u32,
-                vis_physical_height
-            ),
-            ..default()
-        };
-        
-        camera.viewport = Some(viewport);
-        
-        println!("Simple viewport set: top 25% of window");
+        camera.viewport = None;
     }
+    
+    println!("Viewport cleared - rendering to full window");
 }
 
 // UI system runs every frame

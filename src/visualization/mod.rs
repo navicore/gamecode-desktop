@@ -98,22 +98,31 @@ pub fn start_tool_visualization(
     // Position tools around the origin (0,0)
     // The camera has been moved to look at the center of the top section,
     // so tools at (0,0) should appear in the center of that section
-    // Position tools where we know they'll be at least partially visible
-    // We'll try a few different positions by hardcoding them
+    // Position tools in the top section of the screen
+    // Calculate offset needed to move tools to the visualization area
+    let window_height = 960.0; // Default height estimate
+    let vis_height = window_height * 0.25; // Visualization height (25%)
+    
+    // To move from the center to the visualization area:
+    // 1. Center of window is at y=0
+    // 2. Center of visualization area is at y=(window_height*0.5 - vis_height*0.5)
+    let y_offset = (window_height * 0.5) - (vis_height * 0.5);
+    
     let position = if vis_state.last_position == Vec3::ZERO {
-        // First tool - we know it's visible at some Y value, so try different positions
-        Vec3::new(0.0, 300.0, 0.0)  // High positive Y value
+        // First tool - position at the calculated y-offset
+        // This should place it in the center of the visualization area
+        Vec3::new(0.0, y_offset, 0.0)
     } else {
-        // Subsequent tools in a pattern
+        // Subsequent tools in a pattern around the first position
         let num_tools = vis_state.animation_manager.active_tools.len() as f32;
         let angle = num_tools * 0.8;
 
         // Use a small radius for the circular pattern
-        let radius = 40.0;
+        let radius = 50.0;
         
         Vec3::new(
             radius * angle.cos(),
-            300.0 + (radius * angle.sin()),  // Keep them all in the visible area
+            y_offset + (radius * angle.sin()),
             0.0,
         )
     };
