@@ -2,6 +2,30 @@
 
 This document explains how the visualization system works, particularly focusing on positioning sprites in the top 25% section of the application.
 
+## Version Information
+
+- Bevy: 0.12.1
+- bevy_egui: 0.23.0
+- egui: 0.24.1
+- egui_extras: 0.24.2
+
+> Note: We attempted to upgrade to Bevy 0.14 but encountered compatibility issues with bevy_egui. The project is currently using Bevy 0.12.1 which works well with our visualization needs.
+
+### Future Upgrade Considerations
+
+When upgrading Bevy in the future, consider these aspects:
+
+1. **Version Compatibility**: Ensure bevy_egui and other dependencies are compatible with the Bevy version you choose.
+
+2. **API Changes**: Bevy often makes significant API changes between versions that require code adjustments:
+   - Color handling (RGBA vs sRGBA in newer versions)
+   - System configuration syntax
+   - Plugin registration
+
+3. **Ecosystem Benefits**: Newer Bevy versions provide better physics support, improved 2D features, and performance optimizations.
+
+To upgrade successfully, consult the [Bevy migration guide](https://bevyengine.org/learn/migration-guides/) for each version jump.
+
 ## Overview
 
 The application is divided into three sections:

@@ -44,7 +44,6 @@ impl Plugin for VisualizationPlugin {
         // Ensure our plugin has high priority for rendering
         app.init_resource::<VisualizationState>()
             .add_systems(Startup, setup_visualization_system)
-            // Try a different approach - add our systems early in the frame
             .add_systems(
                 PreUpdate, // Use PreUpdate instead of Update for higher priority
                 (update_visualization_system, update_tool_animations),

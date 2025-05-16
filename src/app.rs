@@ -65,7 +65,8 @@ pub fn run() {
             ..default()
         }))
         // Add egui for UI components
-        .add_plugins(EguiPlugin)
+        // In Bevy 0.14, we need to specify plugins differently
+        .add_plugins(bevy_egui::EguiPlugin)
         // Add visualization plugin
         .add_plugins(VisualizationPlugin)
         // Add app resources

@@ -8,14 +8,12 @@ authors = ["Ed Sweeney <ed@onextent.com>"]
 
 [dependencies]
 # Bevy for visualization
-bevy = "0.12"
-
-# Editor will be provided by egui
-
-# UI components
-bevy_egui = "0.23"
-egui = "0.24"
-egui_extras = "0.24"
+bevy = "0.12.1" # Going back to a known working version
+ 
+# UI components - use exact versions known to work together
+bevy_egui = "0.23.0" # Compatible with Bevy 0.12
+egui = "0.24.1" # Compatible with bevy_egui 0.23
+egui_extras = "0.24.2" # Keep in sync with egui
 
 # Agent and LLM requirements
 aws-config = "0.55"
