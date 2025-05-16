@@ -66,7 +66,7 @@ fn update_tool_animations(
 
     // Update lifetimes for all tools
     for (_entity, mut tool, _transform) in query.iter_mut() {
-        tool.lifetime += time.delta_seconds();
+        tool.lifetime += time.delta_secs();
     }
 }
 

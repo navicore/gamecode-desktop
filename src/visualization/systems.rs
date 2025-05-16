@@ -19,7 +19,7 @@ pub fn update_visualization_system(
     windows: Query<&Window>,
 ) {
     // Log running status periodically to avoid console spam
-    if (time.elapsed_seconds() % 5.0) < 0.01 {
+    if (time.elapsed_secs_f64() % 5.0) < 0.01 {
         println!("Visualization update running...");
     }
 
@@ -33,20 +33,21 @@ pub fn update_visualization_system(
         // Make tool entities rotate
         match tool_entity.status {
             ToolStatus::Running => {
-                transform.rotate_z(time.delta_seconds() * 2.0);
+                transform.rotate_z(time.delta_secs() * 2.0);
 
                 // Add a simple oscillation to make tools move up and down
                 // Keep the movement small to ensure it stays within the viewport
-                let oscillation = (time.elapsed_seconds() * 0.8).sin() * 30.0;
-                transform.translation.y += oscillation * time.delta_seconds();
+                // Use f32 for consistency with Transform components
+                let oscillation = (time.elapsed_secs_f64() * 0.8).sin() as f32 * 30.0;
+                transform.translation.y += oscillation * time.delta_secs();
             }
             ToolStatus::Completed => {
                 // Slow down rotation if completed
-                transform.rotate_z(time.delta_seconds() * 0.5);
+                transform.rotate_z(time.delta_secs() * 0.5);
             }
             ToolStatus::Failed => {
                 // Reverse rotation if failed
-                transform.rotate_z(-time.delta_seconds() * 1.0);
+                transform.rotate_z(-time.delta_secs() * 1.0);
             }
             _ => {}
         }
@@ -63,27 +64,26 @@ pub fn spawn_tool_visualization(
     let tool = ToolEntity::new(tool_type);
 
     // Use an extremely bright, large sprite that should be clearly visible
+    // In Bevy 0.15, we use the Sprite component directly instead of SpriteBundle
     commands
         .spawn((
-            SpriteBundle {
-                sprite: Sprite {
-                    // Use extremely bright colors that stand out
-                    color: match tool.status {
-                        ToolStatus::Idle => Color::rgba(0.8, 0.8, 0.8, 1.0), // Bright white
-                        ToolStatus::Running => Color::rgba(1.0, 1.0, 0.0, 1.0), // Bright yellow
-                        ToolStatus::Completed => Color::rgba(0.0, 1.0, 0.0, 1.0), // Bright green
-                        ToolStatus::Failed => Color::rgba(1.0, 0.0, 0.0, 1.0), // Bright red
-                    },
-                    // Make it very large to be sure it's visible
-                    custom_size: Some(Vec2::new(120.0, 120.0)),
-                    ..default()
+            // Create a sprite with color based on tool status
+            Sprite {
+                // Use extremely bright colors that stand out
+                color: match tool.status {
+                    ToolStatus::Idle => Color::srgba(0.8, 0.8, 0.8, 1.0), // Bright white
+                    ToolStatus::Running => Color::srgba(1.0, 1.0, 0.0, 1.0), // Bright yellow
+                    ToolStatus::Completed => Color::srgba(0.0, 1.0, 0.0, 1.0), // Bright green
+                    ToolStatus::Failed => Color::srgba(1.0, 0.0, 0.0, 1.0), // Bright red
                 },
-                // Ensure Z position is appropriate for visibility (0.0 is default for 2D)
-                transform: Transform::from_translation(Vec3::new(position.x, position.y, 0.0)),
-                // Explicitly set visibility to be sure
-                visibility: Visibility::Visible,
+                // Make it very large to be sure it's visible
+                custom_size: Some(Vec2::new(120.0, 120.0)),
                 ..default()
             },
+            // Add the Transform component separately
+            Transform::from_translation(position),
+            // In Bevy 0.15, Visibility components are added automatically
+            // Add our custom tool component
             tool,
         ))
         .id()
@@ -101,11 +101,12 @@ pub fn update_tool_status(
         tool.status = status;
 
         // Update color based on new status
+        // In Bevy 0.15, we need to use srgba instead of color constants
         sprite.color = match status {
-            ToolStatus::Idle => Color::GRAY,
-            ToolStatus::Running => Color::YELLOW,
-            ToolStatus::Completed => Color::GREEN,
-            ToolStatus::Failed => Color::RED,
+            ToolStatus::Idle => Color::srgba(0.5, 0.5, 0.5, 1.0), // Gray
+            ToolStatus::Running => Color::srgba(1.0, 1.0, 0.0, 1.0), // Yellow
+            ToolStatus::Completed => Color::srgba(0.0, 1.0, 0.0, 1.0), // Green
+            ToolStatus::Failed => Color::srgba(1.0, 0.0, 0.0, 1.0), // Red
         };
     }
 }

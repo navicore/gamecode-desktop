@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_egui::egui::{Align, Color32, Frame, Layout, Rect, Stroke};
-use bevy_egui::{egui, EguiPlugin};
+use bevy_egui::{egui, EguiContexts, EguiPlugin};
 
 use crate::agent;
 use crate::core;
@@ -65,7 +65,7 @@ pub fn run() {
             ..default()
         }))
         // Add egui for UI components
-        // In Bevy 0.14, we need to specify plugins differently
+        // In Bevy 0.15
         .add_plugins(bevy_egui::EguiPlugin)
         // Add visualization plugin
         .add_plugins(VisualizationPlugin)
@@ -73,14 +73,10 @@ pub fn run() {
         .init_resource::<AppState>()
         // Add our systems
         .add_systems(Startup, setup_system)
-        .add_systems(
-            Update,
-            (
-                ui_system,
-                demo_tool_system,       // This will create demo tools for testing
-                update_camera_viewport, // Update camera viewport to match UI layout
-            ),
-        )
+        // In Bevy 0.15, we need to chain system configurations
+        .add_systems(Update, ui_system)
+        .add_systems(Update, demo_tool_system) // This will create demo tools for testing
+        .add_systems(Update, update_camera_viewport) // Update camera viewport to match UI layout
         .run();
 }
 
@@ -134,11 +130,8 @@ fn setup_system(mut commands: Commands, windows: Query<&Window>) {
     // This is: (half window height - half visualization height) = 3/8 of window height
     let y_offset = (window_height * 0.5) - (vis_height * 0.5);
 
-    // Go back to the default camera that works
-    let camera = Camera2dBundle::default();
-
-    // Spawn the camera
-    commands.spawn(camera);
+    // In Bevy 0.15, we use Camera2d marker component which auto-inserts required components
+    commands.spawn(Camera2d);
 
     println!(
         "Camera positioned at Y={} with viewport at {},{} size {}x{}",
@@ -171,10 +164,10 @@ fn demo_tool_system(
     mut tool_query: Query<(&mut visualization::ToolEntity, &mut Sprite)>,
 ) {
     // Store the current time
-    let current_time = time.elapsed_seconds() as f64;
+    let current_time = time.elapsed_secs_f64();
 
     // Create a new tool every 5 seconds for demo purposes
-    if time.elapsed_seconds() - app_state.last_demo_tool_time > 5.0 {
+    if time.elapsed_secs() - app_state.last_demo_tool_time > 5.0 {
         let tool_id = generate_tool_id(&mut app_state);
 
         // Random tool type for demo
@@ -201,7 +194,7 @@ fn demo_tool_system(
         });
 
         // Update the last tool time
-        app_state.last_demo_tool_time = time.elapsed_seconds();
+        app_state.last_demo_tool_time = time.elapsed_secs();
 
         // In a real application, we'd use a proper task scheduler
         // For this demo, we'll create a simple tracking mechanism
@@ -308,7 +301,7 @@ fn ui_system(
     time: Res<Time>,
 ) {
     let ctx = contexts.ctx_mut();
-    let current_time = time.elapsed_seconds() as f64;
+    let current_time = time.elapsed_secs_f64();
 
     // Apply theme
     if app_state.dark_mode {
@@ -326,7 +319,7 @@ fn ui_system(
     // Top pane - Visualization (handled by Bevy rendering)
     // Use the simplest approach - just a Window with an empty frame
     egui::Window::new("visualization_window")
-        .frame(Frame::none())
+        .frame(Frame::NONE)
         .title_bar(false)
         .resizable(false)
         .fixed_rect(egui::Rect::from_min_max(
@@ -339,7 +332,7 @@ fn ui_system(
 
     // Settings button (top-right corner)
     egui::Window::new("Settings Button")
-        .frame(Frame::none())
+        .frame(Frame::NONE)
         .title_bar(false)
         .resizable(false)
         .fixed_rect(egui::Rect::from_min_max(
@@ -377,7 +370,7 @@ fn ui_system(
 
     // Middle pane - Journal
     egui::Window::new("Journal")
-        .frame(Frame::none().stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(80))))
+        .frame(Frame::NONE.stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(80))))
         .title_bar(false) // Remove title bar for consistency with input pane
         .resizable(false)
         .fixed_rect(egui::Rect::from_min_max(
@@ -412,12 +405,12 @@ fn ui_system(
                         // Set fixed width again for the scroll area content
                         ui.set_min_width(journal_width - 20.0); // Account for scrollbar
                                                                 // Add bottom margin to the scroll area
-                        egui::Frame::none()
-                            .inner_margin(egui::style::Margin {
-                                left: 0.0,
-                                right: 0.0,
-                                top: 0.0,
-                                bottom: 10.0,
+                        egui::Frame::NONE
+                            .inner_margin(egui::Margin {
+                                left: 0,
+                                right: 0,
+                                top: 0,
+                                bottom: 10,
                             })
                             .show(ui, |ui| {
                                 ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
@@ -473,7 +466,7 @@ fn ui_system(
 
     // Bottom pane - Input
     egui::Window::new("Input")
-        .frame(Frame::none().stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(80))))
+        .frame(Frame::NONE.stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(80))))
         .title_bar(false) // Remove the title bar
         .resizable(false)
         .fixed_rect(egui::Rect::from_min_max(
@@ -510,10 +503,10 @@ fn ui_system(
                         .font(egui::FontId::monospace(14.0));
 
                     // Add with custom background color frame
-                    let frame = egui::Frame::none()
+                    let frame = egui::Frame::NONE
                         .fill(egui::Color32::from_rgb(30, 30, 30)) // Dark background
-                        .inner_margin(egui::style::Margin::same(8.0))
-                        .rounding(egui::Rounding::same(4.0));
+                        .inner_margin(egui::Margin::same(8))
+                        .corner_radius(egui::Rounding::same(4));
 
                     // Use the frame to render the text editor
                     let response = frame.show(ui, |ui| ui.add(text_edit)).inner;

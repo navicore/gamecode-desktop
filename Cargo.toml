@@ -8,12 +8,12 @@ authors = ["Ed Sweeney <ed@onextent.com>"]
 
 [dependencies]
 # Bevy for visualization
-bevy = "0.12.1" # Going back to a known working version
+bevy = "0.15.0" # Upgrading to Bevy 0.15
  
-# UI components - use exact versions known to work together
-bevy_egui = "0.23.0" # Compatible with Bevy 0.12
-egui = "0.24.1" # Compatible with bevy_egui 0.23
-egui_extras = "0.24.2" # Keep in sync with egui
+# UI components - version compatible with Bevy 0.15
+bevy_egui = "0.33.0" # Compatible with Bevy 0.15
+egui = "0.27.0" # Keep in sync with bevy_egui - egui version is managed by bevy_egui
+egui_extras = "0.27.0" # Keep in sync with egui
 
 # Agent and LLM requirements
 aws-config = "0.55"
