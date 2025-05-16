@@ -8,7 +8,7 @@ authors = ["Ed Sweeney <ed@onextent.com>"]
 
 [dependencies]
 # Bevy for visualization
-bevy = "0.15" # Upgrading to Bevy 0.15
+bevy = "0.15" # Upgrading to Bevy 0.16
  
 # UI components - version compatible with Bevy 0.15
 bevy_egui = "0.33" # Compatible with Bevy 0.15
