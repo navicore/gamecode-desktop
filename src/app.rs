@@ -1,6 +1,6 @@
 use bevy::prelude::*;
-use bevy_egui::egui::{Align, Color32, Frame, Layout, Rect, Stroke};
-use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use bevy_egui::egui;
+use bevy_egui::egui::{Align, Frame, Layout};
 
 use crate::agent;
 use crate::core;
@@ -403,8 +403,8 @@ fn ui_system(
                     .auto_shrink([false, false]) // Prevent auto-shrinking in both directions
                     .show(ui, |ui| {
                         // Set fixed width again for the scroll area content
-                        ui.set_min_width(journal_width - 20.0); // Account for scrollbar
-                                                                // Add bottom margin to the scroll area
+                        ui.set_min_width(journal_width - 20.0);
+                        // Add bottom margin to the scroll area
                         egui::Frame::NONE
                             .inner_margin(egui::Margin {
                                 left: 0,
