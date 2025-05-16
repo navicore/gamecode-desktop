@@ -12,7 +12,7 @@ bevy = "0.15" # Upgrading to Bevy 0.15
  
 # UI components - version compatible with Bevy 0.15
 bevy_egui = "0.33" # Compatible with Bevy 0.15
-egui = "0.27" # Keep in sync with bevy_egui - egui version is managed by bevy_egui
+egui = "0.31" # Keep in sync with bevy_egui - egui version is managed by bevy_egui
 egui_extras = "0.27" # Keep in sync with egui
 
 # Agent and LLM requirements
