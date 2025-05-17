@@ -1,5 +1,11 @@
 # GameCode - AI Agent Visualization Interface
 
+# UNDER CONSTRUCTION
+
+# UNDER CONSTRUCTION
+
+# UNDER CONSTRUCTION
+
 ## Project Overview
 GameCode is an AI agent interface that combines Bevy for game-like visualizations with Lapce-powered text editors. The application features three panes:
 1. Top pane: Bevy-rendered visualization of AI agent activities
