@@ -1,6 +1,6 @@
 pub mod backends;
-mod context;
-mod manager;
+pub mod context;
+pub mod manager;
 pub mod tools;
 
 pub use context::*;

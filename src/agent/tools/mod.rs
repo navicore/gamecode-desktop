@@ -1,8 +1,10 @@
 mod executor;
+mod filesystem;
 mod registry;
 mod types;
 
 pub use executor::*;
+pub use filesystem::*;
 pub use registry::*;
 pub use types::*;
 
