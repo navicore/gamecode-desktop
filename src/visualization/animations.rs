@@ -2,7 +2,6 @@ use crate::visualization::components::ToolStatus;
 use crate::visualization::systems::{spawn_tool_visualization, update_tool_status};
 use bevy::prelude::*;
 use std::collections::HashMap;
-use std::time::Duration;
 
 // Animations for tool execution visualization
 pub struct AnimationManager {

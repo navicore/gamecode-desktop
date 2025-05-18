@@ -1,5 +1,3 @@
-use egui::Ui;
-
 // (Placeholder - this implementation is not used in the final app)
 pub struct InputCodeEditor;
 
