@@ -167,7 +167,7 @@ struct ClaudeTool {
 #[derive(Deserialize, Debug)]
 struct ClaudeResponse {
     /// Response ID
-    id: String,
+    //id: String,
 
     /// Content blocks
     content: Vec<ClaudeResponseContent>,
@@ -178,6 +178,8 @@ struct ClaudeResponse {
     /// Usage information
     usage: ClaudeUsage,
 }
+
+impl ClaudeResponse {}
 
 /// Content block in Claude response
 #[derive(Deserialize, Debug)]
@@ -333,34 +335,34 @@ impl BedrockBackend {
         match err {
             SdkError::ServiceError(context) => {
                 let err = context.err();
-                let msg = match err {
+
+                match err {
                     InvokeModelError::AccessDeniedException(e) => {
-                        format!("Access denied: {}", e.to_string())
+                        format!("Access denied: {}", e)
                     }
                     InvokeModelError::InternalServerException(e) => {
-                        format!("Internal server error: {}", e.to_string())
+                        format!("Internal server error: {}", e)
                     }
                     InvokeModelError::ModelNotReadyException(e) => {
-                        format!("Model not ready: {}", e.to_string())
+                        format!("Model not ready: {}", e)
                     }
                     InvokeModelError::ModelTimeoutException(e) => {
-                        format!("Model timeout: {}", e.to_string())
+                        format!("Model timeout: {}", e)
                     }
                     InvokeModelError::ResourceNotFoundException(e) => {
-                        format!("Resource not found: {}", e.to_string())
+                        format!("Resource not found: {}", e)
                     }
                     InvokeModelError::ServiceQuotaExceededException(e) => {
-                        format!("Service quota exceeded: {}", e.to_string())
+                        format!("Service quota exceeded: {}", e)
                     }
                     InvokeModelError::ThrottlingException(e) => {
-                        format!("Throttling error: {}", e.to_string())
+                        format!("Throttling error: {}", e)
                     }
                     InvokeModelError::ValidationException(e) => {
-                        format!("Validation error: {}", e.to_string())
+                        format!("Validation error: {}", e)
                     }
                     _ => format!("Unknown service error: {:?}", err),
-                };
-                msg
+                }
             }
             SdkError::ConstructionFailure(err) => format!("Construction failure: {:?}", err),
             SdkError::DispatchFailure(err) => format!("Dispatch failure: {:?}", err),
@@ -598,7 +600,7 @@ impl BedrockBackend {
                         };
 
                         // Insert before the last added message (which is the current one)
-                        if final_messages.len() > 0 {
+                        if !final_messages.is_empty() {
                             let pos = final_messages.len() - 1;
                             final_messages.insert(pos, tool_result_message);
                         } else {
