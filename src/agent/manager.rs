@@ -1,7 +1,7 @@
 use crate::agent::backends::{Backend, BackendCore, BedrockBackend, BedrockModel};
 use crate::agent::context::ContextManager;
 use crate::agent::tools::ToolRegistry;
-use regex::Regex;
+// Removed regex dependency
 use serde_json::Value;
 use std::collections::HashMap;
 use tracing::{debug, error, info, warn};
@@ -15,7 +15,7 @@ pub struct AgentManager {
     tool_registry: ToolRegistry,
 
     /// Context manager for maintaining conversation state
-    context_manager: ContextManager,
+    pub context_manager: ContextManager,
 
     /// Configuration settings for the agent
     config: AgentConfig,
@@ -141,34 +141,37 @@ impl AgentManager {
 
         // Get tool calls directly from the backend response
         info!("Processing tool calls from response");
-        let tool_calls = if !backend_response.tool_calls.is_empty() {
-            // Convert from raw ToolUse to ToolCall format
-            info!(
-                "Found {} tool calls in backend response",
-                backend_response.tool_calls.len()
-            );
-            backend_response
-                .tool_calls
-                .iter()
-                .map(|tc| {
-                    let args = tc
-                        .args
-                        .iter()
-                        .map(|(k, v)| format!("{}={}", k, v))
-                        .collect();
+        // Extract tool calls directly from the structured response
+        let tool_calls: Vec<ToolCall> = backend_response
+            .tool_calls
+            .iter()
+            .map(|tc| {
+                let args = tc
+                    .args
+                    .iter()
+                    .map(|(k, v)| format!("{}={}", k, v))
+                    .collect();
+                
+                // Log the tool call ID to track it through the system
+                if let Some(id) = &tc.id {
+                    debug!("Received tool call with ID '{}' for tool '{}'", id, tc.name);
+                } else {
+                    warn!("Received tool call without ID for tool '{}'", tc.name);
+                }
 
-                    ToolCall {
-                        name: tc.name.clone(),
-                        args,
-                        args_json: Some(tc.args.clone()),
-                    }
-                })
-                .collect()
-        } else {
-            // Fallback to parsing from content if no tool calls are provided
-            info!("No tool calls in backend response, falling back to content parsing");
-            self.parse_tool_calls(&backend_response.content)
-        };
+                ToolCall {
+                    name: tc.name.clone(),
+                    args,
+                    args_json: Some(tc.args.clone()),
+                    id: tc.id.clone(),
+                }
+            })
+            .collect();
+            
+        info!(
+            "Found {} tool calls in backend response",
+            tool_calls.len()
+        );
         info!("Processing {} tool calls", tool_calls.len());
 
         // Execute any tool calls
@@ -203,67 +206,7 @@ impl AgentManager {
         })
     }
 
-    /// Parse LLM response to extract tool calls
-    fn parse_tool_calls(&self, response: &str) -> Vec<ToolCall> {
-        let mut tool_calls = Vec::new();
-
-        // Create regex to match tool calls
-        // This looks for patterns like:
-        // <tool name="tool_name">
-        // {
-        //   "arg1": "value1",
-        //   "arg2": "value2"
-        // }
-        // </tool>
-        let re = Regex::new(r#"<tool\s+name=["']([^"']+)["']>\s*(.+?)\s*</tool>"#).unwrap();
-
-        // Find all matches
-        for cap in re.captures_iter(response) {
-            if cap.len() >= 3 {
-                let tool_name = cap[1].to_string();
-                let args_text = cap[2].to_string();
-
-                // Try to parse args as JSON
-                match serde_json::from_str::<Value>(&args_text) {
-                    Ok(json_value) => {
-                        if let Value::Object(map) = json_value {
-                            // Convert JSON object to HashMap<String, Value>
-                            let args_map: HashMap<String, Value> = map.into_iter().collect();
-
-                            // Convert args to strings
-                            let args = args_map
-                                .iter()
-                                .map(|(k, v)| format!("{}={}", k, v))
-                                .collect();
-
-                            tool_calls.push(ToolCall {
-                                name: tool_name,
-                                args,
-                                args_json: Some(args_map),
-                            });
-                        } else {
-                            // If it's not an object, just use it as a single arg
-                            tool_calls.push(ToolCall {
-                                name: tool_name,
-                                args: vec![args_text],
-                                args_json: None,
-                            });
-                        }
-                    }
-                    Err(_) => {
-                        // If JSON parsing fails, just use raw text as args
-                        tool_calls.push(ToolCall {
-                            name: tool_name,
-                            args: vec![args_text],
-                            args_json: None,
-                        });
-                    }
-                }
-            }
-        }
-
-        tool_calls
-    }
+    // Removed parse_tool_calls - Using structured tool calls directly
 
     /// Execute any tool calls found in the response
     async fn execute_tool_calls(
@@ -279,9 +222,22 @@ impl AgentManager {
                 .await
                 .map_err(|e| format!("Tool execution error: {}", e))?;
 
+            // CRITICAL: Make sure we're preserving the original ID from Claude's tool_use block
+            // This ID must match EXACTLY for Claude's API validation - even a single character difference will fail
+            let tool_call_id = tool_call.id.clone();
+            if let Some(id) = &tool_call_id {
+                debug!("USING EXACT Claude-provided tool_use_id: '{}' for result of tool '{}'", id, tool_call.name);
+                debug!("ID MUST NOT be modified in any way - even a single character difference will cause validation to fail");
+            } else {
+                // This should never happen with Claude tool calls, and will cause validation to fail
+                warn!("CRITICAL ERROR: Missing tool ID for tool '{}', Claude will reject the result", tool_call.name);
+            }
+            
+            // Pass the exact same ID to the result
             results.push(ToolResult {
                 tool_name: tool_call.name.clone(),
                 result,
+                tool_call_id: tool_call_id, // This must be passed unmodified to context.rs
             });
         }
 
@@ -331,15 +287,30 @@ impl AgentManager {
 
 /// Structure representing a tool call extracted from LLM response
 pub struct ToolCall {
+    /// Name of the tool to call
     pub name: String,
+    
+    /// Arguments as strings (for backward compatibility)
     pub args: Vec<String>,
+    
+    /// Arguments as JSON (if available)
     pub args_json: Option<HashMap<String, Value>>,
+    
+    /// Tool call ID (if available)
+    pub id: Option<String>,
 }
 
 /// Structure representing the result of a tool execution
 pub struct ToolResult {
+    /// Name of the tool that was executed
     pub tool_name: String,
+    
+    /// Result of the tool execution
     pub result: String,
+    
+    /// Tool use ID (if available) - IMPORTANT: This must match exactly the ID from the original tool_use message
+    /// Internally we call it tool_call_id but when sending to Claude it must be sent as tool_use_id
+    pub tool_call_id: Option<String>,
 }
 
 /// Structure representing a complete response from the agent
