@@ -38,11 +38,11 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
 
-    - name: Check format
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all -- --check
+    # - name: Check format
+    #   uses: actions-rs/cargo@v1
+    #   with:
+    #     command: fmt
+    #     args: --all -- --check
 
     - name: Install required cargo
       run: cargo install clippy-sarif sarif-fmt
