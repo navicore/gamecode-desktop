@@ -11,10 +11,10 @@ use std::env;
 async fn main() {
     // Check command-line arguments
     let args: Vec<String> = env::args().collect();
-    
+
     // Check if debug flag is enabled
     let debug_mode = args.contains(&String::from("--debug"));
-    
+
     if args.len() > 1 && args[1] == "--test-bedrock" {
         // Set up environment variable for logging
         if debug_mode {
@@ -29,10 +29,12 @@ async fn main() {
                 std::env::set_var("RUST_LOG", "info,gamecode=info,aws_config=info");
             }
         }
-        
+
         println!("Running AWS Bedrock integration test...");
-        println!("Use --debug flag for more verbose logging (e.g., cargo run -- --test-bedrock --debug)");
-        
+        println!(
+            "Use --debug flag for more verbose logging (e.g., cargo run -- --test-bedrock --debug)"
+        );
+
         // Run the Bedrock integration test
         if let Err(e) = examples::run_bedrock_example().await {
             eprintln!("Error in Bedrock example: {}", e);

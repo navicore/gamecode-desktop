@@ -151,7 +151,7 @@ impl AgentManager {
                     .iter()
                     .map(|(k, v)| format!("{}={}", k, v))
                     .collect();
-                
+
                 // Log the tool call ID to track it through the system
                 if let Some(id) = &tc.id {
                     debug!("Received tool call with ID '{}' for tool '{}'", id, tc.name);
@@ -167,11 +167,8 @@ impl AgentManager {
                 }
             })
             .collect();
-            
-        info!(
-            "Found {} tool calls in backend response",
-            tool_calls.len()
-        );
+
+        info!("Found {} tool calls in backend response", tool_calls.len());
         info!("Processing {} tool calls", tool_calls.len());
 
         // Execute any tool calls
@@ -226,13 +223,21 @@ impl AgentManager {
             // This ID must match EXACTLY for Claude's API validation - even a single character difference will fail
             let tool_call_id = tool_call.id.clone();
             if let Some(id) = &tool_call_id {
-                debug!("USING EXACT Claude-provided tool_use_id: '{}' for result of tool '{}'", id, tool_call.name);
-                debug!("ID MUST NOT be modified in any way - even a single character difference will cause validation to fail");
+                debug!(
+                    "USING EXACT Claude-provided tool_use_id: '{}' for result of tool '{}'",
+                    id, tool_call.name
+                );
+                debug!(
+                    "ID MUST NOT be modified in any way - even a single character difference will cause validation to fail"
+                );
             } else {
                 // This should never happen with Claude tool calls, and will cause validation to fail
-                warn!("CRITICAL ERROR: Missing tool ID for tool '{}', Claude will reject the result", tool_call.name);
+                warn!(
+                    "CRITICAL ERROR: Missing tool ID for tool '{}', Claude will reject the result",
+                    tool_call.name
+                );
             }
-            
+
             // Pass the exact same ID to the result
             results.push(ToolResult {
                 tool_name: tool_call.name.clone(),
@@ -289,13 +294,13 @@ impl AgentManager {
 pub struct ToolCall {
     /// Name of the tool to call
     pub name: String,
-    
+
     /// Arguments as strings (for backward compatibility)
     pub args: Vec<String>,
-    
+
     /// Arguments as JSON (if available)
     pub args_json: Option<HashMap<String, Value>>,
-    
+
     /// Tool call ID (if available)
     pub id: Option<String>,
 }
@@ -304,10 +309,10 @@ pub struct ToolCall {
 pub struct ToolResult {
     /// Name of the tool that was executed
     pub tool_name: String,
-    
+
     /// Result of the tool execution
     pub result: String,
-    
+
     /// Tool use ID (if available) - IMPORTANT: This must match exactly the ID from the original tool_use message
     /// Internally we call it tool_call_id but when sending to Claude it must be sent as tool_use_id
     pub tool_call_id: Option<String>,

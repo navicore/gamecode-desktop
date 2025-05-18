@@ -571,8 +571,11 @@ impl BedrockBackend {
                     // Add ONLY tool result blocks
                     for (id, content) in &tool_results {
                         // CRITICAL: Ensure we're using the exact tool_use_id string from the original request
-                        debug!("Creating tool_result block with EXACT tool_use_id: '{}'", id);
-                        
+                        debug!(
+                            "Creating tool_result block with EXACT tool_use_id: '{}'",
+                            id
+                        );
+
                         tool_result_blocks.push(ClaudeContentBlock::ToolResult {
                             content_type: "tool_result".to_string(),
                             tool_use_id: id.clone(), // Must match exactly with the original tool_use id - do not modify in any way
@@ -614,8 +617,11 @@ impl BedrockBackend {
 
                 for (id, content) in &tool_results {
                     // CRITICAL: Ensure we're using the exact tool_use_id string from the original request
-                    debug!("Creating tool_result block with EXACT tool_use_id: '{}'", id);
-                    
+                    debug!(
+                        "Creating tool_result block with EXACT tool_use_id: '{}'",
+                        id
+                    );
+
                     tool_result_blocks.push(ClaudeContentBlock::ToolResult {
                         content_type: "tool_result".to_string(),
                         tool_use_id: id.clone(), // Must match exactly with the original tool_use id - do not modify in any way
@@ -897,15 +903,21 @@ impl BedrockBackend {
                             for tool_call in tool_calls {
                                 // Check if we have the original ID - critical for response validation
                                 let id = if let Some(original_id) = &tool_call.id {
-                                    debug!("Using original tool_use_id '{}' from conversation history", original_id);
+                                    debug!(
+                                        "Using original tool_use_id '{}' from conversation history",
+                                        original_id
+                                    );
                                     original_id.clone()
                                 } else {
                                     // If no original ID, generate one, but this may cause validation issues
                                     let generated_id = format!("tool-{}", uuid::Uuid::new_v4());
-                                    warn!("No original tool_use_id found, generating new ID '{}' which may cause validation failures", generated_id);
+                                    warn!(
+                                        "No original tool_use_id found, generating new ID '{}' which may cause validation failures",
+                                        generated_id
+                                    );
                                     generated_id
                                 };
-                                
+
                                 content_blocks.push(ClaudeContentBlock::ToolUse {
                                     content_type: "tool_use".to_string(),
                                     id,
@@ -981,7 +993,7 @@ impl BedrockBackend {
                 if let Some(name_start) = line.find("name=\"") {
                     if let Some(name_end) = line[name_start + 6..].find("\"") {
                         let name = &line[name_start + 6..name_start + 6 + name_end];
-                        
+
                         // Extract the original tool ID if provided (important for response validation)
                         let original_id = if let Some(id_start) = line.find("id=\"") {
                             if let Some(id_end) = line[id_start + 4..].find("\"") {
@@ -992,12 +1004,14 @@ impl BedrockBackend {
                         } else {
                             None
                         };
-                        
+
                         // Log if we found or couldn't find an original ID
                         if let Some(id) = &original_id {
                             debug!("Found original tool_use_id '{}' in message text", id);
                         } else {
-                            debug!("No original tool_use_id found in message text, response validation may fail");
+                            debug!(
+                                "No original tool_use_id found in message text, response validation may fail"
+                            );
                         }
 
                         // Extract tool args (everything until </tool>)
@@ -1199,7 +1213,7 @@ impl Backend for BedrockBackend {
                                 {
                                     // Log the exact Claude-provided tool_use ID for tracking
                                     debug!("Received tool_use with ID '{}' from Claude API", id);
-                                    
+
                                     tool_calls.push(ToolUse {
                                         name: name.clone(),
                                         args: input.clone(),
@@ -1223,11 +1237,16 @@ impl Backend for BedrockBackend {
 
                         // Include the original tool_use_id in the formatted tool call
                         let formatted_tool_call = if let Some(id) = &tool_call.id {
-                            debug!("Including original tool_use_id '{}' in formatted tool call", id);
-                            format!("<tool name=\"{}\" id=\"{}\">\n{}\n</tool>", 
-                                tool_call.name, 
-                                id,  // Include the exact original ID
-                                tool_json)
+                            debug!(
+                                "Including original tool_use_id '{}' in formatted tool call",
+                                id
+                            );
+                            format!(
+                                "<tool name=\"{}\" id=\"{}\">\n{}\n</tool>",
+                                tool_call.name,
+                                id, // Include the exact original ID
+                                tool_json
+                            )
                         } else {
                             warn!("No ID available for tool call, response validation may fail");
                             format!("<tool name=\"{}\">\n{}\n</tool>", tool_call.name, tool_json)

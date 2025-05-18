@@ -178,8 +178,11 @@ impl Tool for ListDirectoryTool {
     }
 
     async fn execute(&self, args: &[String], working_dir: &str) -> Result<String, String> {
-        debug!("ListDirectoryTool called with args: {:?}, working_dir: {}", args, working_dir);
-        
+        debug!(
+            "ListDirectoryTool called with args: {:?}, working_dir: {}",
+            args, working_dir
+        );
+
         // Use provided path or working directory
         let path = if !args.is_empty() {
             let arg = args[0].clone();
@@ -192,7 +195,7 @@ impl Tool for ListDirectoryTool {
                 arg
             };
             debug!("After prefix stripping: '{}'", path_value);
-            
+
             // Remove any surrounding quotes (similar to ExecuteCommandTool)
             let path_value = path_value
                 .trim_start_matches('"')
@@ -213,8 +216,13 @@ impl Tool for ListDirectoryTool {
                 working_dir.to_string()
             } else if path_value.contains(working_dir) {
                 // If it contains the working directory already, try to clean it up
-                debug!("Path contains working dir, extracting just the path: '{}'", path_value);
-                if path_value.starts_with(&format!("\"{}", working_dir)) && path_value.ends_with('"') {
+                debug!(
+                    "Path contains working dir, extracting just the path: '{}'",
+                    path_value
+                );
+                if path_value.starts_with(&format!("\"{}", working_dir))
+                    && path_value.ends_with('"')
+                {
                     // Handle case where working directory is quoted like: "/path/to/dir"
                     working_dir.to_string()
                 } else {
@@ -231,7 +239,7 @@ impl Tool for ListDirectoryTool {
         };
 
         debug!("Final resolved path: '{}'", path);
-        
+
         // Read the directory
         let path_obj = Path::new(&path);
         if !path_obj.exists() {

@@ -66,20 +66,24 @@ pub async fn run_bedrock_example() -> Result<(), String> {
             info!("Result content: {}", result.result);
         }
     }
-    
+
     // Get the current context for debugging
     let context = agent_manager.context_manager.get_context();
     info!("Current context with tool results:\n{}", context);
-    
+
     // Now we need to send the tool result back to Bedrock and get Claude's response
     info!("Sending follow-up request to Claude with the tool result...");
-    
+
     // Process a follow-up message to continue the conversation with the tool result
-    let response2 = agent_manager.process_input("Please continue with the listing and create the hello.txt file as I requested.").await?;
-    
+    let response2 = agent_manager
+        .process_input(
+            "Please continue with the listing and create the hello.txt file as I requested.",
+        )
+        .await?;
+
     info!("Second response from Claude after receiving tool result:");
     info!("{}", response2.content);
-    
+
     if !response2.tool_results.is_empty() {
         info!("Tool results from second response:");
         for result in &response2.tool_results {
@@ -88,7 +92,7 @@ pub async fn run_bedrock_example() -> Result<(), String> {
             info!("Result content: {}", result.result);
         }
     }
-    
+
     // Check if the file was created
     let hello_file_path = Path::new(&current_dir).join("hello.txt");
     if hello_file_path.exists() {
@@ -96,7 +100,7 @@ pub async fn run_bedrock_example() -> Result<(), String> {
         match std::fs::read_to_string(&hello_file_path) {
             Ok(content) => {
                 info!("Successfully created hello.txt with content: {}", content);
-            },
+            }
             Err(e) => {
                 info!("File exists but couldn't read content: {}", e);
             }
@@ -104,10 +108,13 @@ pub async fn run_bedrock_example() -> Result<(), String> {
     } else {
         info!("File hello.txt was not created yet");
     }
-    
+
     // Display the final context to see the complete conversation flow
     let final_context = agent_manager.context_manager.get_context();
-    info!("Final context with complete conversation flow:\n{}", final_context);
+    info!(
+        "Final context with complete conversation flow:\n{}",
+        final_context
+    );
 
     Ok(())
 }
