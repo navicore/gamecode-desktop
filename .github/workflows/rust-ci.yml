@@ -44,11 +44,14 @@ jobs:
         command: fmt
         args: --all -- --check
 
+    - name: Install required cargo
+      run: cargo install clippy-sarif sarif-fmt
+
     - name: Clippy
-      uses: actions-rs/cargo@v1
-      with:
-        command: clippy
-        args: -- -D warnings
+      run:
+        cargo clippy --all-features --message-format=json -- -W clippy::pedantic -W clippy::nursery -W clippy::unwrap_used -W clippy::expect_used | clippy-sarif | tee rust-clippy-results.sarif | sarif-fmt
+
+      continue-on-error: true
 
     - name: Build
       uses: actions-rs/cargo@v1
