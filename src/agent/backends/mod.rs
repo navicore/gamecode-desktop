@@ -1,10 +1,11 @@
 mod bedrock;
 
-pub use bedrock::*;
+pub use bedrock::{BedrockBackend, BedrockConfig, BedrockModel, ToolUse};
+use tracing::debug;
 
 /// Initialize all available backends
 pub fn init() {
-    println!("Initializing agent backends...");
+    debug!("Initializing agent backends...");
 }
 
 /// Trait defining a language model backend core functionality
@@ -24,6 +25,7 @@ pub trait Backend: BackendCore {
 }
 
 /// Structure containing a response from an LLM backend
+#[derive(Default)]
 pub struct BackendResponse {
     /// The text content of the response
     pub content: String,
@@ -33,4 +35,7 @@ pub struct BackendResponse {
 
     /// Tokens used in this request and response
     pub tokens_used: Option<usize>,
+
+    /// Tool calls extracted from the response (if any)
+    pub tool_calls: Vec<ToolUse>,
 }

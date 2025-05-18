@@ -26,6 +26,11 @@ impl ToolRegistry {
         self.tools.insert(name, tool);
     }
 
+    /// Set the working directory for tool execution
+    pub fn set_working_directory(&mut self, directory: &str) {
+        self.executor.set_working_directory(directory);
+    }
+
     /// Get a list of all available tool names
     pub fn available_tools(&self) -> Vec<String> {
         self.tools.keys().cloned().collect()
