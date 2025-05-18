@@ -89,7 +89,7 @@ impl AnimationManager {
 
     // Set animation speed (1.0 is normal speed)
     pub fn set_animation_speed(&mut self, speed: f32) {
-        self.animation_speed = speed.max(0.1).min(3.0);
+        self.animation_speed = speed.clamp(0.1, 3.0);
     }
 
     // Get current animation speed
