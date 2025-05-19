@@ -1,3 +1,5 @@
+use tracing::trace;
+
 use super::Editor;
 
 // Input editor component for the bottom pane
@@ -12,7 +14,7 @@ impl InputEditor {
 
     pub fn set_keybindings(&mut self, mode: &str) {
         // TODO: Configure keybindings (vi/emacs/default)
-        println!("Setting {} keybindings for input editor", mode);
+        trace!("Setting {} keybindings for input editor", mode);
     }
 }
 
@@ -27,7 +29,7 @@ impl Editor for InputEditor {
 
     fn handle_input(&mut self, input: &str) -> bool {
         // TODO: Handle input events
-        println!("Input editor received: {}", input);
+        trace!("Input editor received: {}", input);
         true
     }
 }

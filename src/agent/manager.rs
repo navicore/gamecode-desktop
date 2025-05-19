@@ -4,15 +4,15 @@ use crate::agent::tools::ToolRegistry;
 // Removed regex dependency
 use serde_json::Value;
 use std::collections::HashMap;
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, trace, warn};
 
 /// Central manager for the AI agent
 pub struct AgentManager {
     /// The currently active backend for LLM processing
-    backend: BedrockBackend,
+    pub backend: BedrockBackend,
 
     /// Tool registry for managing available tools
-    tool_registry: ToolRegistry,
+    pub tool_registry: ToolRegistry,
 
     /// Context manager for maintaining conversation state
     pub context_manager: ContextManager,
@@ -106,6 +106,11 @@ impl AgentManager {
         self.initialized = true;
         Ok(())
     }
+    
+    /// Check if the agent manager is initialized
+    pub fn is_initialized(&self) -> bool {
+        self.initialized
+    }
 
     /// Process user input and generate a response
     pub async fn process_input(&mut self, input: &str) -> Result<AgentResponse, String> {
@@ -154,7 +159,7 @@ impl AgentManager {
 
                 // Log the tool call ID to track it through the system
                 if let Some(id) = &tc.id {
-                    debug!("Received tool call with ID '{}' for tool '{}'", id, tc.name);
+                    trace!("Received tool call with ID '{}' for tool '{}'", id, tc.name);
                 } else {
                     warn!("Received tool call without ID for tool '{}'", tc.name);
                 }
@@ -188,6 +193,27 @@ impl AgentManager {
         // Add tool results to context if any
         if !tool_results.is_empty() {
             info!("Adding {} tool results to context", tool_results.len());
+            
+            // Log each tool result being added
+            for (i, result) in tool_results.iter().enumerate() {
+                trace!("Tool result {}: name={}, id={:?}, content length={}", 
+                      i, 
+                      result.tool_name, 
+                      result.tool_call_id, 
+                      result.result.len());
+                
+                // Log the beginning of the content to help debug formatting issues
+                if result.tool_name == "read_file" {
+                    trace!("read_file result first 200 chars: {}", 
+                          if result.result.len() > 200 { 
+                              &result.result[..200] 
+                          } else { 
+                              &result.result 
+                          });
+                    trace!("IMPORTANT: read_file result must be passed as raw text without JSON serialization");
+                }
+            }
+            
             self.context_manager.add_tool_results(&tool_results);
         }
 
@@ -223,11 +249,12 @@ impl AgentManager {
             // This ID must match EXACTLY for Claude's API validation - even a single character difference will fail
             let tool_call_id = tool_call.id.clone();
             if let Some(id) = &tool_call_id {
-                debug!(
+                trace!(
                     "USING EXACT Claude-provided tool_use_id: '{}' for result of tool '{}'",
-                    id, tool_call.name
+                    id,
+                    tool_call.name
                 );
-                debug!(
+                trace!(
                     "ID MUST NOT be modified in any way - even a single character difference will cause validation to fail"
                 );
             } else {

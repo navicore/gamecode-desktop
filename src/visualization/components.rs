@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use tracing::trace;
 
 // Bevy ECS components for visualization
 

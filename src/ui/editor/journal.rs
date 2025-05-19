@@ -1,3 +1,5 @@
+use tracing::trace;
+
 use super::Editor;
 
 // Journal editor component for the middle pane
@@ -34,7 +36,7 @@ impl Editor for JournalEditor {
 
     fn handle_input(&mut self, input: &str) -> bool {
         // TODO: Handle input events (mostly for scrolling/selection)
-        println!("Journal editor received: {}", input);
+        trace!("Journal editor received: {}", input);
         true
     }
 }

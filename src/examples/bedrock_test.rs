@@ -1,4 +1,3 @@
-use crate::agent::backends::BedrockConfig;
 use crate::agent::manager::{AgentConfig, AgentManager};
 use crate::agent::tools::{ExecuteCommandTool, ListDirectoryTool, ReadFileTool, WriteFileTool};
 use std::env;
@@ -8,11 +7,6 @@ use tracing::info;
 /// Example showing AWS Bedrock integration with Claude models
 pub async fn run_bedrock_example() -> Result<(), String> {
     // Initialize tracing with a more verbose configuration
-    tracing_subscriber::fmt()
-        .with_env_filter("info,gamecode=debug")
-        .with_target(true)
-        .init();
-
     info!("Starting Bedrock integration example");
 
     // Create agent configuration
@@ -53,7 +47,7 @@ pub async fn run_bedrock_example() -> Result<(), String> {
 
     info!("Sending input: {}", input);
 
-    let response = agent_manager.process_input(&input).await?;
+    let response = agent_manager.process_input(input).await?;
 
     info!("Response from Claude:");
     info!("{}", response.content);

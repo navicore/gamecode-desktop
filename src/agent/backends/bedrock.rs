@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, trace, warn};
 use uuid;
 
 /// AWS Bedrock implementation of the Backend trait
@@ -107,7 +107,7 @@ struct ClaudeRequest {
 }
 
 /// Message structure for Claude API
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 struct ClaudeMessage {
     /// Role (user or assistant)
     role: String,
@@ -117,7 +117,7 @@ struct ClaudeMessage {
 }
 
 /// Content block for Claude API
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 #[serde(untagged)]
 enum ClaudeContentBlock {
     /// Text content
@@ -289,7 +289,7 @@ impl BedrockBackend {
         let client = aws_sdk_bedrockruntime::Client::new(&aws_config);
         self.client = Some(Arc::new(client));
 
-        debug!("AWS Bedrock client initialized successfully");
+        trace!("AWS Bedrock client initialized successfully");
         Ok(())
     }
 
@@ -384,7 +384,7 @@ impl BedrockBackend {
         // Parse conversation history and extract tool results
         let (mut messages, tool_results) = self.parse_conversation_history(prompt)?;
 
-        debug!("Created Claude request with {} messages", messages.len());
+        trace!("Created Claude request with {} messages", messages.len());
         for (i, msg) in messages.iter().enumerate() {
             let content_types: Vec<&str> = msg
                 .content
@@ -395,9 +395,11 @@ impl BedrockBackend {
                     ClaudeContentBlock::ToolResult { .. } => "tool_result",
                 })
                 .collect();
-            debug!(
+            trace!(
                 "Message {}: role={}, content_types={:?}",
-                i, msg.role, content_types
+                i,
+                msg.role,
+                content_types
             );
         }
 
@@ -526,7 +528,7 @@ impl BedrockBackend {
             }
         }
 
-        debug!(
+        trace!(
             "Found {} tool use blocks and {} tool result blocks",
             tool_use_blocks.len(),
             if has_tool_result_blocks { "some" } else { "no" }
@@ -537,7 +539,7 @@ impl BedrockBackend {
 
         // If we have tool use blocks but no tool result blocks, we need to add them
         if !tool_use_blocks.is_empty() && !has_tool_result_blocks && has_collected_tool_results {
-            debug!(
+            trace!(
                 "Found {} tool_use blocks and {} collected tool results - inserting tool results",
                 tool_use_blocks.len(),
                 tool_results.len()
@@ -545,109 +547,87 @@ impl BedrockBackend {
 
             // Now, restructure the messages to include tool results properly
             let mut final_messages = Vec::new();
-            let mut last_message_had_tool_use = false;
 
-            // First pass: go through messages and inject tool results after tool use messages
-            for (index, message) in messages.into_iter().enumerate() {
-                let has_tool_use = message
-                    .content
-                    .iter()
-                    .any(|block| matches!(block, ClaudeContentBlock::ToolUse { .. }));
-
+            // Completely rebuild the message sequence to ensure each assistant message with tool_use
+            // is immediately followed by a user message with matching tool_result
+            
+            // First pass: collect each message and check for tool_use blocks
+            let mut i = 0;
+            while i < messages.len() {
+                let message = messages[i].clone();
+                
+                // Check if this is an assistant message with tool_use blocks
+                let tool_use_ids: Vec<String> = if message.role == "assistant" {
+                    message.content.iter()
+                        .filter_map(|block| {
+                            if let ClaudeContentBlock::ToolUse { id, .. } = block {
+                                Some(id.clone())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+                
                 // Add the original message
                 final_messages.push(message);
-
-                // If this message had tool use, flag that the next message should start with tool results
-                if has_tool_use {
-                    last_message_had_tool_use = true;
-                    debug!(
-                        "Message {} contains tool_use, next message should start with tool_result",
-                        index
-                    );
-                }
-                // If the last message had tool use, this message should start with tool results
-                else if last_message_had_tool_use {
-                    // Create a new user message with ONLY tool results
+                
+                // If this message had tool_use blocks, we need to add a user message with tool_results
+                if !tool_use_ids.is_empty() {
+                    trace!("Message {} contains {} tool_use blocks, adding tool results", i, tool_use_ids.len());
+                    
                     let mut tool_result_blocks = Vec::new();
-
-                    // Add ONLY tool result blocks
-                    for (id, content) in &tool_results {
-                        // CRITICAL: Ensure we're using the exact tool_use_id string from the original request
-                        debug!(
-                            "Creating tool_result block with EXACT tool_use_id: '{}'",
-                            id
-                        );
-
-                        tool_result_blocks.push(ClaudeContentBlock::ToolResult {
-                            content_type: "tool_result".to_string(),
-                            tool_use_id: id.clone(), // Must match exactly with the original tool_use id - do not modify in any way
-                            content: content.clone(),
-                        });
+                    
+                    // Log all available tool results for debugging
+                    trace!("Available tool results:");
+                    for (result_id, content) in &tool_results {
+                        trace!("  Tool ID: {}", result_id);
+                        trace!("  Content: {}", content);
                     }
-
-                    // Insert this tool result message BEFORE the current message
-                    // This ensures tool results appear immediately after tool use messages
-                    if !tool_result_blocks.is_empty() {
-                        debug!(
-                            "Inserting user message with {} tool result blocks after message {}",
-                            tool_result_blocks.len(),
-                            index - 1
-                        );
-
-                        let tool_result_message = ClaudeMessage {
-                            role: "user".to_string(),
-                            content: tool_result_blocks,
-                        };
-
-                        // Insert before the last added message (which is the current one)
-                        if !final_messages.is_empty() {
-                            let pos = final_messages.len() - 1;
-                            final_messages.insert(pos, tool_result_message);
+                    
+                    // For each tool_use block, find its corresponding tool_result
+                    for id in &tool_use_ids {
+                        // Find matching tool result in collected results
+                        if let Some((_, content)) = tool_results.iter().find(|(result_id, _)| result_id == id) {
+                            trace!("Creating tool_result block with EXACT tool_use_id: '{}'", id);
+                            trace!("Tool result content: {}", content);
+                            
+                            tool_result_blocks.push(ClaudeContentBlock::ToolResult {
+                                content_type: "tool_result".to_string(),
+                                tool_use_id: id.clone(),
+                                content: content.clone(),
+                            });
                         } else {
-                            final_messages.push(tool_result_message);
+                            trace!("WARNING: No tool result found for tool_use_id: '{}'", id);
+                            trace!("Available tool result IDs: {:?}", 
+                                  tool_results.iter().map(|(id, _)| id).collect::<Vec<&String>>());
                         }
                     }
-
-                    // Reset flag
-                    last_message_had_tool_use = false;
+                    
+                    // Add a user message with just the tool results immediately after the assistant message
+                    if !tool_result_blocks.is_empty() {
+                        trace!("Adding user message with {} tool result blocks after message {}", 
+                               tool_result_blocks.len(), i);
+                               
+                        final_messages.push(ClaudeMessage {
+                            role: "user".to_string(),
+                            content: tool_result_blocks,
+                        });
+                    }
                 }
+                
+                i += 1;
             }
 
-            // If the last message had tool use, we need to add a tool result message at the end
-            if last_message_had_tool_use && !tool_results.is_empty() {
-                let mut tool_result_blocks = Vec::new();
-
-                for (id, content) in &tool_results {
-                    // CRITICAL: Ensure we're using the exact tool_use_id string from the original request
-                    debug!(
-                        "Creating tool_result block with EXACT tool_use_id: '{}'",
-                        id
-                    );
-
-                    tool_result_blocks.push(ClaudeContentBlock::ToolResult {
-                        content_type: "tool_result".to_string(),
-                        tool_use_id: id.clone(), // Must match exactly with the original tool_use id - do not modify in any way
-                        content: content.clone(),
-                    });
-                }
-
-                if !tool_result_blocks.is_empty() {
-                    debug!(
-                        "Adding final user message with {} tool result blocks",
-                        tool_result_blocks.len()
-                    );
-
-                    final_messages.push(ClaudeMessage {
-                        role: "user".to_string(),
-                        content: tool_result_blocks,
-                    });
-                }
-            }
+            // Our new approach handles all cases within the main iteration loop
+            // by adding tool results immediately after each message with tool use blocks
 
             messages = final_messages;
 
             // Log the final message sequence
-            debug!("Restructured messages sequence:");
+            trace!("Restructured messages sequence:");
             for (i, msg) in messages.iter().enumerate() {
                 let content_types: Vec<&str> = msg
                     .content
@@ -658,15 +638,17 @@ impl BedrockBackend {
                         ClaudeContentBlock::ToolResult { .. } => "tool_result",
                     })
                     .collect();
-                debug!(
+                trace!(
                     "  Message {}: role={}, content_types={:?}",
-                    i, msg.role, content_types
+                    i,
+                    msg.role,
+                    content_types
                 );
             }
         }
 
         // Log final message structure
-        debug!("Final message structure:");
+        trace!("Final message structure:");
         for (i, msg) in messages.iter().enumerate() {
             let content_types: Vec<&str> = msg
                 .content
@@ -677,9 +659,11 @@ impl BedrockBackend {
                     ClaudeContentBlock::ToolResult { .. } => "tool_result",
                 })
                 .collect();
-            debug!(
+            trace!(
                 "  Message {}: role={}, content_types={:?}",
-                i, msg.role, content_types
+                i,
+                msg.role,
+                content_types
             );
         }
 
@@ -702,7 +686,7 @@ impl BedrockBackend {
                 );
 
                 if !starts_with_tool_result {
-                    debug!("Warning: Message following tool_use doesn't start with tool_result!");
+                    trace!("Warning: Message following tool_use doesn't start with tool_result!");
                 }
 
                 // Reset flag after checking
@@ -723,6 +707,7 @@ impl BedrockBackend {
 
     /// Parse the conversation history to extract all messages (user, assistant, system, tool) properly formatted
     /// Returns a tuple of (messages, tool_results) where tool_results is a collection of (id, content) pairs
+    #[allow(clippy::type_complexity)]
     fn parse_conversation_history(
         &self,
         prompt: &str,
@@ -768,100 +753,81 @@ impl BedrockBackend {
                             .or_else(|| json.get("tool_call_id").and_then(|v| v.as_str())),
                         json.get("content"),
                     ) {
-                        // Parse the content into appropriate format for Claude - always as structured objects
-                        let parsed_content = if content.is_string() {
+                        // Parse the content into appropriate format for Claude based on tool type
+                        trace!("Processing tool result with id: {}, content: {}", id, content);
+                        
+                        let parsed_content = if id.contains("read_file") {
+                            // For read_file, just pass through the raw content as a single string
+                            // No JSON parsing, no line splitting - just the exact file content
+                            // IMPORTANT: Claude expects a raw text string for file contents, not a JSON string or array
+                            if content.is_string() {
+                                let content_str = content.as_str().unwrap_or("");
+                                trace!("Read file result, preserving as raw string: {} chars", content_str.len());
+                                trace!("Raw content: {}", content_str);
+                                // The key fix: Return content as a JSON string but NOT wrapped in quotes or array brackets
+                                // Using serde_json::Value::String ensures proper escaping without wrapping in array
+                                Value::String(content_str.to_string())
+                            } else {
+                                // This should not happen with read_file
+                                trace!("Warning: read_file result not a string, converting");
+                                Value::String(content.to_string())
+                            }
+                        } else if id.contains("list_directory") || (content.is_string() && 
+                                content.as_str().unwrap_or("").contains("Contents of")) {
+                            // For directory listings, format as objects with text and type fields
                             let content_str = content.as_str().unwrap_or("");
+                            trace!("Directory listing result: {} chars", content_str.len());
+                            
+                            let entries: Vec<&str> = content_str
+                                .lines()
+                                .map(|s| s.trim())
+                                .filter(|s| !s.is_empty())
+                                .collect();
 
-                            // For directory listings, create structured objects
-                            if content_str.contains("Contents of")
-                                || content_str.contains(" (file)")
-                                || content_str.contains(" (dir)")
-                                || content_str.contains(".rs")
-                                || content_str.contains(".json")
-                                || content_str.contains(".txt")
-                                || content_str.contains("directory")
-                            {
-                                let entries: Vec<&str> = content_str
-                                    .lines()
-                                    .map(|s| s.trim())
-                                    .filter(|s| !s.is_empty())
-                                    .collect();
+                            // Create an array of structured objects
+                            let mut file_objects = Vec::new();
 
-                                // Create an array of structured objects (avoiding reserved "type" field)
-                                let mut file_objects = Vec::new();
-
-                                for (i, entry) in entries.iter().enumerate() {
-                                    // Skip the first line if it contains directory path
-                                    if i == 0 && entry.contains("Contents of") {
-                                        continue;
-                                    }
-
-                                    // Parse file/directory entries
-                                    if let Some(name_end) = entry.rfind(" (") {
-                                        let name = entry[..name_end].trim_matches('"');
-                                        let type_str =
-                                            entry[name_end + 2..].trim_end_matches(')').trim();
-
-                                        // Use is_directory boolean instead of "type" field
-                                        let is_directory =
-                                            type_str == "dir" || type_str == "directory";
-
-                                        // Create structured object with text field instead of name, keeping other fields
-                                        let mut obj = serde_json::Map::new();
-                                        obj.insert(
-                                            "text".to_string(),
-                                            Value::String(name.to_string()),
-                                        );
-                                        obj.insert(
-                                            "is_directory".to_string(),
-                                            Value::Bool(is_directory),
-                                        );
-                                        obj.insert(
-                                            "type".to_string(),
-                                            Value::String("text".to_string()),
-                                        );
-
-                                        file_objects.push(Value::Object(obj));
-                                    }
+                            for (i, entry) in entries.iter().enumerate() {
+                                // Skip the first line if it contains directory path
+                                if i == 0 && entry.contains("Contents of") {
+                                    continue;
                                 }
 
-                                // Return the array of file objects
-                                Value::Array(file_objects)
-                            } else {
-                                // Try parsing as JSON first
-                                match serde_json::from_str::<Value>(content_str) {
-                                    Ok(json_val) => {
-                                        // If it's already an array, use it as is
-                                        if json_val.is_array() {
-                                            json_val
-                                        } else {
-                                            // If it's already a proper JSON object, wrap it in an array
-                                            Value::Array(vec![json_val])
-                                        }
-                                    }
-                                    Err(_) => {
-                                        // If it's not JSON, check if it has multiple lines
-                                        let content_lines: Vec<&str> = content_str
-                                            .lines()
-                                            .map(|s| s.trim())
-                                            .filter(|s| !s.is_empty())
-                                            .collect();
+                                // Parse file/directory entries
+                                if let Some(name_end) = entry.rfind(" (") {
+                                    let name = entry[..name_end].trim_matches('"');
+                                    
+                                    // Create structured object with text field and type=text
+                                    let mut obj = serde_json::Map::new();
+                                    obj.insert(
+                                        "text".to_string(),
+                                        Value::String(name.to_string()),
+                                    );
+                                    obj.insert(
+                                        "type".to_string(),
+                                        Value::String("text".to_string()),
+                                    );
 
-                                        // If multiple lines, create an array of strings
-                                        if content_lines.len() > 1 {
-                                            Value::Array(
-                                                content_lines
-                                                    .into_iter()
-                                                    .map(|s| Value::String(s.to_string()))
-                                                    .collect(),
-                                            )
-                                        } else {
-                                            // Simple array with a single string item
-                                            Value::Array(vec![Value::String(
-                                                content_str.to_string(),
-                                            )])
-                                        }
-                                    }
+                                    file_objects.push(Value::Object(obj));
+                                }
+                            }
+
+                            // Return the array of file objects
+                            Value::Array(file_objects)
+                        } else if content.is_string() {
+                            // For other tools with string content
+                            let content_str = content.as_str().unwrap_or("");
+                            trace!("Other tool result: {} chars", content_str.len());
+                            
+                            // Try parsing as JSON first
+                            match serde_json::from_str::<Value>(content_str) {
+                                Ok(json_val) => {
+                                    // If already JSON, use it
+                                    json_val
+                                }
+                                Err(_) => {
+                                    // If not JSON, use as string
+                                    Value::String(content_str.to_string())
                                 }
                             }
                         } else {
@@ -870,7 +836,7 @@ impl BedrockBackend {
                         };
 
                         // Store tool result for later use
-                        debug!(
+                        trace!(
                             "Collected tool result with exact tool_use_id '{}' for later processing",
                             id
                         );
@@ -905,7 +871,7 @@ impl BedrockBackend {
                             for tool_call in tool_calls {
                                 // Check if we have the original ID - critical for response validation
                                 let id = if let Some(original_id) = &tool_call.id {
-                                    debug!(
+                                    trace!(
                                         "Using original tool_use_id '{}' from conversation history",
                                         original_id
                                     );
@@ -973,7 +939,7 @@ impl BedrockBackend {
             });
         }
 
-        debug!(
+        trace!(
             "Parsed conversation history: {} messages, {} tool results",
             messages.len(),
             tool_results.len()
@@ -998,27 +964,25 @@ impl BedrockBackend {
 
                         // Extract the original tool ID if provided (important for response validation)
                         let original_id = if let Some(id_start) = line.find("id=\"") {
-                            if let Some(id_end) = line[id_start + 4..].find("\"") {
-                                Some(line[id_start + 4..id_start + 4 + id_end].to_string())
-                            } else {
-                                None
-                            }
+                            line[id_start + 4..]
+                                .find("\"")
+                                .map(|id_end| line[id_start + 4..id_start + 4 + id_end].to_string())
                         } else {
                             None
                         };
 
                         // Log if we found or couldn't find an original ID
                         if let Some(id) = &original_id {
-                            debug!("Found original tool_use_id '{}' in message text", id);
+                            trace!("Found original tool_use_id '{}' in message text", id);
                         } else {
-                            debug!(
+                            warn!(
                                 "No original tool_use_id found in message text, response validation may fail"
                             );
                         }
 
                         // Extract tool args (everything until </tool>)
                         let mut arg_json = String::new();
-                        while let Some(arg_line) = lines.next() {
+                        for arg_line in lines.by_ref() {
                             if arg_line.trim() == "</tool>" {
                                 break;
                             }
@@ -1037,7 +1001,7 @@ impl BedrockBackend {
                             }
                             Err(_) => {
                                 // If JSON parsing fails, attempt to parse as key=value pairs
-                                debug!("Failed to parse tool args as JSON: {}", arg_json);
+                                warn!("Failed to parse tool args as JSON: {}", arg_json);
 
                                 // For legacy support - try extracting key=value pairs
                                 let mut args = HashMap::new();
@@ -1089,7 +1053,7 @@ impl BackendCore for BedrockBackend {
 #[async_trait]
 impl Backend for BedrockBackend {
     async fn generate_response(&self, prompt: &str) -> Result<BackendResponse, String> {
-        debug!("Generating response with model: {:?}", self.current_model);
+        trace!("Generating response with model: {:?}", self.current_model);
 
         // If client is not initialized, return error
         let client = match &self.client {
@@ -1111,7 +1075,7 @@ impl Backend for BedrockBackend {
                 return Err(format!("Failed to serialize request: {}", e));
             }
         };
-        info!("REQUEST JSON:\n{}", pretty_request);
+        debug!("REQUEST JSON:\n{}", pretty_request);
 
         // Serialize to compact JSON for API call
         let request_json = match serde_json::to_string(&request) {
@@ -1138,7 +1102,7 @@ impl Backend for BedrockBackend {
             }
 
             // Call Bedrock API
-            debug!(
+            trace!(
                 "Calling AWS Bedrock API with model: {}",
                 self.current_model_name()
             );
@@ -1152,7 +1116,7 @@ impl Backend for BedrockBackend {
                 .send()
                 .await;
             let elapsed = start_time.elapsed();
-            debug!("API call took {:?}", elapsed);
+            trace!("API call took {:?}", elapsed);
 
             match result {
                 Ok(response) => {
@@ -1178,7 +1142,7 @@ impl Backend for BedrockBackend {
 
                     // Print pretty JSON for logging
                     match self.pretty_print_json(&json_value) {
-                        Ok(pretty_json) => info!("RESPONSE JSON:\n{}", pretty_json),
+                        Ok(pretty_json) => debug!("RESPONSE JSON:\n{}", pretty_json),
                         Err(e) => {
                             error!("{}", e);
                             // Still continue processing since we have the original response
@@ -1214,7 +1178,7 @@ impl Backend for BedrockBackend {
                                     (&block.id, &block.name, &block.input)
                                 {
                                     // Log the exact Claude-provided tool_use ID for tracking
-                                    debug!("Received tool_use with ID '{}' from Claude API", id);
+                                    trace!("Received tool_use with ID '{}' from Claude API", id);
 
                                     tool_calls.push(ToolUse {
                                         name: name.clone(),
@@ -1225,7 +1189,7 @@ impl Backend for BedrockBackend {
                             }
                             _ => {
                                 // Ignore other content types
-                                debug!("Ignoring content block with type: {}", block.content_type);
+                                warn!("Ignoring content block with type: {}", block.content_type);
                             }
                         }
                     }
@@ -1239,7 +1203,7 @@ impl Backend for BedrockBackend {
 
                         // Include the original tool_use_id in the formatted tool call
                         let formatted_tool_call = if let Some(id) = &tool_call.id {
-                            debug!(
+                            trace!(
                                 "Including original tool_use_id '{}' in formatted tool call",
                                 id
                             );
@@ -1259,7 +1223,7 @@ impl Backend for BedrockBackend {
                     }
 
                     // Log minimal info about processed results
-                    debug!(
+                    trace!(
                         "Processed {} content blocks with {} tool calls",
                         claude_response.content.len(),
                         tool_calls.len()

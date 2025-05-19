@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
-use tracing::{debug, error};
+use tracing::{error, trace};
 
 /// Tool for reading files from the filesystem
 pub struct ReadFileTool;
@@ -178,15 +178,16 @@ impl Tool for ListDirectoryTool {
     }
 
     async fn execute(&self, args: &[String], working_dir: &str) -> Result<String, String> {
-        debug!(
+        trace!(
             "ListDirectoryTool called with args: {:?}, working_dir: {}",
-            args, working_dir
+            args,
+            working_dir
         );
 
         // Use provided path or working directory
         let path = if !args.is_empty() {
             let arg = args[0].clone();
-            debug!("Raw arg: '{}'", arg);
+            trace!("Raw arg: '{}'", arg);
 
             // Check if the argument is in the format "path=value"
             let path_value = if let Some(stripped) = arg.strip_prefix("path=") {
@@ -194,7 +195,7 @@ impl Tool for ListDirectoryTool {
             } else {
                 arg
             };
-            debug!("After prefix stripping: '{}'", path_value);
+            trace!("After prefix stripping: '{}'", path_value);
 
             // Remove any surrounding quotes (similar to ExecuteCommandTool)
             let path_value = path_value
@@ -203,20 +204,20 @@ impl Tool for ListDirectoryTool {
                 .trim_start_matches('\'')
                 .trim_end_matches('\'')
                 .to_string();
-            debug!("After quote trimming: '{}'", path_value);
+            trace!("After quote trimming: '{}'", path_value);
 
             // Check for various scenarios
             if path_value.starts_with('/') {
                 // Absolute path
-                debug!("Using as absolute path");
+                trace!("Using as absolute path");
                 path_value
             } else if path_value == working_dir || path_value == format!("\"{}\"", working_dir) {
                 // If it's just a duplicate of working dir, use working dir directly
-                debug!("Path is same as working dir, using working_dir directly");
+                trace!("Path is same as working dir, using working_dir directly");
                 working_dir.to_string()
             } else if path_value.contains(working_dir) {
                 // If it contains the working directory already, try to clean it up
-                debug!(
+                trace!(
                     "Path contains working dir, extracting just the path: '{}'",
                     path_value
                 );
@@ -230,15 +231,15 @@ impl Tool for ListDirectoryTool {
                 }
             } else {
                 // Relative path - prepend working directory
-                debug!("Using as relative path");
+                trace!("Using as relative path");
                 format!("{}/{}", working_dir.trim_end_matches('/'), path_value)
             }
         } else {
-            debug!("No args, using working_dir as path");
+            trace!("No args, using working_dir as path");
             working_dir.to_string()
         };
 
-        debug!("Final resolved path: '{}'", path);
+        trace!("Final resolved path: '{}'", path);
 
         // Read the directory
         let path_obj = Path::new(&path);
@@ -351,9 +352,11 @@ impl Tool for ExecuteCommandTool {
             .trim_end_matches('\'')
             .to_string();
 
-        debug!(
+        trace!(
             "Original arg: '{}', parsed command: '{}', in directory: {}",
-            arg_cmd, command, working_dir
+            arg_cmd,
+            command,
+            working_dir
         );
 
         // For security, we only support a limited set of commands for now
@@ -401,7 +404,7 @@ impl Tool for ExecuteCommandTool {
             cmd_parts.push(current_part);
         }
 
-        debug!("Parsed command parts: {:?}", cmd_parts);
+        trace!("Parsed command parts: {:?}", cmd_parts);
 
         if cmd_parts.is_empty() {
             return Err("Empty command".to_string());
