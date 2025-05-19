@@ -4,3 +4,4 @@ Cargo.lock
 .DS_Store
 **/.claude/settings.local.json
 *hello**
+/*.txt

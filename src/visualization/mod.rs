@@ -6,6 +6,7 @@ pub use components::*;
 pub use systems::*;
 
 use bevy::prelude::*;
+use tracing::trace;
 
 // Resource to track active visualizations
 #[derive(Resource)]
@@ -32,7 +33,7 @@ impl Default for VisualizationState {
 
 // Visualization initialization and management
 pub fn init() {
-    println!("Initializing visualization components...");
+    trace!("Initializing visualization components...");
 }
 
 // Plugin to add all visualization systems to the Bevy app
@@ -48,7 +49,7 @@ impl Plugin for VisualizationPlugin {
                 (update_visualization_system, update_tool_animations),
             );
 
-        println!("Visualization plugin initialized with high priority");
+        trace!("Visualization plugin initialized with high priority");
     }
 }
 

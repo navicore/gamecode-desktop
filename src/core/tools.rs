@@ -1,5 +1,7 @@
 // MCP-like tools implementation
 
+use tracing::trace;
+
 pub struct ToolManager {
     // TODO: Tool manager properties
 }
@@ -16,7 +18,7 @@ impl ToolManager {
 
     pub fn execute_tool(&self, tool: &Tool, args: Vec<String>) -> Result<String, String> {
         // TODO: Execute the specified tool
-        println!("Executing tool: {} with args: {:?}", tool.name, args);
+        trace!("Executing tool: {} with args: {:?}", tool.name, args);
         Ok(format!("Tool {} executed successfully", tool.name))
     }
 }

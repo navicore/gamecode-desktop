@@ -2,6 +2,7 @@ use crate::visualization::components::ToolStatus;
 use crate::visualization::systems::{spawn_tool_visualization, update_tool_status};
 use bevy::prelude::*;
 use std::collections::HashMap;
+use tracing::trace;
 
 // Animations for tool execution visualization
 pub struct AnimationManager {
@@ -28,9 +29,10 @@ impl AnimationManager {
         tool_type: &str,
         position: Vec3,
     ) {
-        println!(
+        trace!(
             "Starting animation for {} tool (ID: {})",
-            tool_type, tool_id
+            tool_type,
+            tool_id
         );
 
         // Create a new tool entity in the visualization
@@ -77,9 +79,10 @@ impl AnimationManager {
             update_tool_status(commands, entity, status, tool_query);
 
             let result = if success { "successful" } else { "failed" };
-            println!(
+            trace!(
                 "Completing animation with {} result for tool ID: {}",
-                result, tool_id
+                result,
+                tool_id
             );
 
             // In a real implementation, we might schedule the entity for removal

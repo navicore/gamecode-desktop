@@ -1,11 +1,12 @@
 use crate::visualization::components::*;
 use bevy::prelude::*;
+use tracing::trace;
 
 // Bevy ECS systems for visualization
 
 // This system runs once at startup to set up the visualization scene
 pub fn setup_visualization_system() {
-    println!("Setting up visualization system...");
+    trace!("Setting up visualization system...");
 
     // This would normally set up the initial scene elements
     // For now it's just a placeholder
@@ -18,11 +19,6 @@ pub fn update_visualization_system(
     mut query: Query<(Entity, &mut ToolEntity, &mut Transform)>,
     windows: Query<&Window>,
 ) {
-    // Log running status periodically to avoid console spam
-    if (time.elapsed_secs_f64() % 5.0) < 0.01 {
-        println!("Visualization update running...");
-    }
-
     // Get window dimensions to calculate proper scaling
     let window = windows.get_single().ok();
     let window_height = window.map(|w| w.resolution.height()).unwrap_or(960.0);

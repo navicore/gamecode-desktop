@@ -6,9 +6,10 @@ mod types;
 pub use executor::*;
 pub use filesystem::*;
 pub use registry::*;
+use tracing::trace;
 pub use types::*;
 
 /// Initialize the tools system
 pub fn init() {
-    println!("Initializing agent tools...");
+    trace!("Initializing agent tools...");
 }
